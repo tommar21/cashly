@@ -1,39 +1,52 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { getAllPrices, convertToUSD } from "@/lib/prices";
 import { DolarBlueCard } from "@/components/widgets/DolarBlueCard";
 import { BTCCard } from "@/components/widgets/BTCCard";
 import { PatrimonioCard } from "@/components/widgets/PatrimonioCard";
 import { AccountCard } from "@/components/widgets/AccountCard";
-import { Account, Currency } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AccountForUI } from "@/types/database";
 
 export const revalidate = 300; // Revalidate every 5 minutes
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
   const prices = await getAllPrices();
 
   // Get user's accounts
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("*")
-    .order("created_at", { ascending: true });
+  const accounts = await prisma.bankAccount.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "asc" },
+  });
 
   // Calculate total patrimony
   let totalUsd = 0;
-  const accountsWithUsd: Array<{ account: Account; balanceInUsd: number }> = [];
+  const accountsWithUsd: Array<{ account: AccountForUI; balanceInUsd: number }> = [];
 
   if (accounts && prices) {
-    for (const account of accounts as Account[]) {
+    for (const account of accounts) {
+      // Prisma Decimal can be converted to number via Number()
+      const balance = Number(account.balance);
+      const currency = account.currency as "ARS" | "USD" | "BTC";
       const balanceInUsd = convertToUSD(
-        account.balance,
-        account.currency as Currency,
+        balance,
+        currency,
         prices.dolarBlue.venta,
         prices.btcUsd
       );
       totalUsd += balanceInUsd;
-      accountsWithUsd.push({ account, balanceInUsd });
+      accountsWithUsd.push({
+        account: { ...account, balance, currency },
+        balanceInUsd
+      });
     }
   }
 

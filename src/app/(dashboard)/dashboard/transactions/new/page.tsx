@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +20,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Account } from "@/types/database";
+
+interface Account {
+  id: string;
+  name: string;
+  currency: string;
+  balance: number;
+}
 
 const EXPENSE_CATEGORIES = [
   "Prioritarios",
@@ -34,8 +39,8 @@ const INCOME_CATEGORIES = ["Salario", "Freelancing", "Inversiones", "Otros"];
 
 export default function NewTransactionPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [type, setType] = useState<"income" | "expense">("expense");
-  const [accountId, setAccountId] = useState("");
+  const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
+  const [bankAccountId, setBankAccountId] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -43,74 +48,48 @@ export default function NewTransactionPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
     const fetchAccounts = async () => {
-      const { data } = await supabase
-        .from("accounts")
-        .select("*")
-        .order("name");
-      if (data) setAccounts(data);
+      const res = await fetch("/api/accounts");
+      if (res.ok) {
+        const data = await res.json();
+        setAccounts(data);
+      }
     };
     fetchAccounts();
-  }, [supabase]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("No estás autenticado");
-      setLoading(false);
-      return;
-    }
-
-    const amountValue = parseFloat(amount);
-
-    // Insert transaction
-    const { error: transactionError } = await supabase
-      .from("transactions")
-      .insert({
-        user_id: user.id,
-        account_id: accountId,
-        amount: amountValue,
+    const res = await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bankAccountId,
+        amount: parseFloat(amount),
         type,
         category,
         description: description || null,
         date,
-      });
+      }),
+    });
 
-    if (transactionError) {
-      setError(transactionError.message);
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error);
       setLoading(false);
-      return;
+    } else {
+      router.push("/dashboard");
+      router.refresh();
     }
-
-    // Update account balance
-    const account = accounts.find((a) => a.id === accountId);
-    if (account) {
-      const newBalance =
-        type === "income"
-          ? account.balance + amountValue
-          : account.balance - amountValue;
-
-      await supabase
-        .from("accounts")
-        .update({ balance: newBalance })
-        .eq("id", accountId);
-    }
-
-    router.push("/dashboard");
-    router.refresh();
   };
 
-  const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categories = type === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   return (
     <div className="max-w-md mx-auto">
@@ -131,10 +110,10 @@ export default function NewTransactionPage() {
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant={type === "expense" ? "default" : "outline"}
+                variant={type === "EXPENSE" ? "default" : "outline"}
                 className="flex-1"
                 onClick={() => {
-                  setType("expense");
+                  setType("EXPENSE");
                   setCategory("");
                 }}
               >
@@ -142,10 +121,10 @@ export default function NewTransactionPage() {
               </Button>
               <Button
                 type="button"
-                variant={type === "income" ? "default" : "outline"}
+                variant={type === "INCOME" ? "default" : "outline"}
                 className="flex-1"
                 onClick={() => {
-                  setType("income");
+                  setType("INCOME");
                   setCategory("");
                 }}
               >
@@ -155,7 +134,7 @@ export default function NewTransactionPage() {
 
             <div className="space-y-2">
               <Label htmlFor="account">Cuenta</Label>
-              <Select value={accountId} onValueChange={setAccountId} required>
+              <Select value={bankAccountId} onValueChange={setBankAccountId} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccioná una cuenta" />
                 </SelectTrigger>
@@ -229,7 +208,7 @@ export default function NewTransactionPage() {
             </Button>
             <Button
               type="submit"
-              disabled={loading || !accountId || !category || !amount}
+              disabled={loading || !bankAccountId || !category || !amount}
             >
               {loading ? "Guardando..." : "Guardar"}
             </Button>

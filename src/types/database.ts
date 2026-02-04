@@ -1,36 +1,22 @@
-export type Currency = "ARS" | "USD" | "BTC";
-export type TransactionType = "income" | "expense";
-export type Category =
+// Re-export Prisma types for consistency
+export type { Currency, TransactionType, BankAccount, Transaction } from "@prisma/client";
+
+// Category types for UI
+export type ExpenseCategory =
   | "Prioritarios"
   | "Servicios"
   | "Suscripciones"
-  | "Extras"
+  | "Extras";
+
+export type IncomeCategory =
   | "Salario"
   | "Freelancing"
   | "Inversiones"
   | "Otros";
 
-export interface Account {
-  id: string;
-  user_id: string;
-  name: string;
-  currency: Currency;
-  balance: number;
-  created_at: string;
-}
+export type Category = ExpenseCategory | IncomeCategory;
 
-export interface Transaction {
-  id: string;
-  user_id: string;
-  account_id: string;
-  amount: number;
-  type: TransactionType;
-  category: Category;
-  description: string | null;
-  date: string;
-  created_at: string;
-}
-
+// API response types
 export interface DolarBlueResponse {
   moneda: string;
   casa: string;
@@ -44,4 +30,15 @@ export interface CryptoPriceResponse {
   [key: string]: {
     usd: number;
   };
+}
+
+// Account type for components (with balance as number instead of Decimal)
+export interface AccountForUI {
+  id: string;
+  userId: string;
+  name: string;
+  currency: "ARS" | "USD" | "BTC";
+  balance: number;
+  createdAt: Date;
+  updatedAt: Date;
 }

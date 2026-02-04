@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,9 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
 
-  if (!user) {
+  if (!session?.user) {
     redirect("/login");
   }
 
@@ -26,8 +23,15 @@ export default async function DashboardLayout({
             Cashly
           </Link>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user.email}</span>
-            <form action="/auth/signout" method="post">
+            <span className="text-sm text-muted-foreground">
+              {session.user.email}
+            </span>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/login" });
+              }}
+            >
               <Button variant="outline" size="sm" type="submit">
                 Salir
               </Button>
