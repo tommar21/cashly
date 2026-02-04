@@ -1,64 +1,69 @@
-# Cashly - App de Finanzas Personales
+# Cashly
 
-## Overview
-
-App de finanzas personales para Argentina con:
-- Tracking de ingresos y gastos
-- Dólar blue en tiempo real
-- Bitcoin en tiempo real
-- Multi-moneda (ARS, USD, BTC)
+App de finanzas personales con precios en tiempo real de dólar blue y BTC.
 
 ## Stack
 
-- **Framework:** Next.js 14+ (App Router)
-- **Language:** TypeScript
+- **Framework:** Next.js 16 (App Router)
+- **Database:** Neon PostgreSQL + Prisma 7
+- **Auth:** Auth.js (NextAuth v5) con credentials
 - **Styling:** Tailwind CSS + Shadcn UI
-- **Database:** Supabase (PostgreSQL + Auth + RLS)
 - **Deploy:** Vercel
 
-## Setup
+## URLs
 
-1. Clonar el repo
-2. `npm install`
-3. Copiar `.env.local.example` a `.env.local` y configurar:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Ejecutar el SQL de `supabase/migrations/001_initial_schema.sql` en Supabase
-5. `npm run dev`
+- **Producción:** https://cashly-blue.vercel.app
+- **GitHub:** https://github.com/tommar21/cashly
+
+## Desarrollo
+
+```bash
+npm run dev     # Inicia en localhost:3000
+npm run build   # Build de producción
+```
+
+## Base de Datos
+
+```bash
+npx prisma studio    # GUI para ver/editar datos
+npx prisma db push   # Sincronizar schema con DB
+npx prisma generate  # Regenerar cliente
+```
 
 ## Estructura
 
 ```
 src/
 ├── app/
-│   ├── (auth)/           # Páginas de login/signup
-│   ├── (dashboard)/      # Dashboard y páginas protegidas
-│   ├── auth/             # Callbacks de auth
-│   └── api/              # API routes
+│   ├── (auth)/           # Login, Signup
+│   ├── (dashboard)/      # Dashboard, Accounts, Transactions
+│   └── api/              # API routes (accounts, transactions, auth)
 ├── components/
 │   ├── ui/               # Shadcn components
-│   └── widgets/          # Widgets del dashboard
+│   └── widgets/          # DolarBlueCard, BTCCard, etc.
 ├── lib/
-│   ├── supabase/         # Cliente Supabase
-│   └── prices.ts         # APIs de dólar y crypto
+│   ├── auth.ts           # Auth.js config
+│   ├── prisma.ts         # Prisma client
+│   └── prices.ts         # APIs de dólar blue y BTC
 └── types/
-    └── database.ts       # Types de la DB
+    └── database.ts       # TypeScript types
 ```
 
 ## APIs Externas
 
-- **Dólar Blue:** `https://dolarapi.com/v1/dolares/blue`
-- **BTC:** `https://api.coingecko.com/api/v3/simple/price`
+- **Dólar Blue:** https://dolarapi.com/v1/dolares/blue
+- **BTC:** https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
 
-## Database Schema
+## Variables de Entorno
 
-- `accounts`: Cuentas del usuario (IOL, Nexo, etc)
-- `transactions`: Ingresos y gastos
+```env
+DATABASE_URL=         # Neon PostgreSQL connection string
+AUTH_SECRET=          # Auth.js secret (openssl rand -base64 32)
+AUTH_URL=             # URL de la app (http://localhost:3000 en dev)
+```
 
-Ver `supabase/migrations/001_initial_schema.sql` para el schema completo.
+## Modelos
 
-## Comandos
-
-- `npm run dev` - Desarrollo
-- `npm run build` - Build de producción
-- `npm run lint` - Linter
+- **User** - Usuarios con auth
+- **BankAccount** - Cuentas (IOL, Nexo, etc.) con moneda (ARS/USD/BTC)
+- **Transaction** - Ingresos y gastos por cuenta y categoría
